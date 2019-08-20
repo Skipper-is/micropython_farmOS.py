@@ -9,10 +9,15 @@ class farmOS:
         #self.area = AreaAPI(self.session)
         #self.term = TermAPI(self.session)
 
+    def authenticate(self):
+        if (self.session.authenticate()):
+            print("Success! Cookie and Authentication Token have been collected!")
+        return True
 
 class APISession:
 
-    def __init__(self, hostname, username, password):
+    def __init__(self, hostname, username, password, *args, **kwargs):
+        super(APISession, self).__init__(*args, **kwargs)
         # Initial setup of the APISession takes the hostname (including the http/https:// )
         self.username = username
         self.password = password
@@ -42,6 +47,11 @@ class APISession:
         self.request = self.http_request("/user/login", method="POST", options=options, headers=header)  # Send the actual HTTP request
         # We're going through the APISession version of request, as it will append the hostname to the request. You could always roll your own by calling
         # micropython-farmOS.request()
+        if self.request.status_code == 200:  # If the login page doesn't send 302, it means you've typed in your username or password wrong
+            print("Error, password or username incorrect")  # So we're going to print a warning for that
+
+        if self.request.status_code == 404:  # If you get a 404, then your hostname is probably incorrect.
+            print("Hostname may be incorrect, login page not found")
 
         if self.request.status_code == 302:  # Drupal redirects the user once login is successful, if that is true, we've come to the right place
 
@@ -55,15 +65,11 @@ class APISession:
 
                     self.authenticated = True  # And store authenticated as true, so we know we've got a token saved
 
-        if self.request.status_code == 200:  # If the login page doesn't send 302, it means you've typed in your username or password wrong
-            print("Error, password or username incorrect")  # So we're going to print a warning for that
 
-        if self.request.status_code == 404:  # If you get a 404, then your hostname is probably incorrect.
-            print("Hostname may be incorrect, login page not found")
         # If this is false, we have not got the correct login. We may need to try again.
         return self.authenticated
 
-    def http_request(self, path, method="GET", options=None, headers={}, json=None, cookies=None):
+    def http_request(self, path, method="GET", options=None, headers={}, json=None, cookies=None, params={}):
         # If you don't add the first / to the request url, like "farm_asset.json?type=animal"
         # the function will fail, so we just check, and add a / if needed
         if (path[0] != "/"):
@@ -74,7 +80,7 @@ class APISession:
             cookies = self.cookie  # And add them to the request
         if self.authenticated and self.token:  # And see if we have a token
             headers["Authorization"] = "Bearer " + self.token  # And add the token to the request as well
-        r = request(method, url=requestedURL, data=options, json=json, headers=headers, cookies=cookies)
+        r = request(method, url=requestedURL, data=options, json=json, headers=headers, cookies=cookies, params=params)
         return r
 
 
@@ -88,7 +94,7 @@ class BaseAPI():
     def getRecordByID(self, id):
         """ Takes the ID of the record, and returns the data """
         path = self.entity_type + "/" + str(id) + ".json"
-
+        #TODO remove .json and add in filter for Accept: application.json or wait for the fix to the entity.controller
         response = self.session.http_request(path)
 
         if (response.status_code == 200):  # If we get a success - Return the JSON of the results
@@ -96,6 +102,12 @@ class BaseAPI():
 
         return []  # Or return an empty list
 
+    def getRecordData(self, filters):
+        path = self.entity_type + '.json'
+
+        filters = {**self.filtes, **filters}
+
+        response = self.session.http_request(path, filters)
 
 class LogAPI(BaseAPI):
 
@@ -137,10 +149,10 @@ class Requests:
         return ujson.loads(self.content)
 
 
-def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthToken=None, stream=None):
+def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthToken=None, stream=None, params={}):
     import usocket
-    print(cookies)
-    print(method)
+    print(cookies)  # TODO Remove
+    print(method)  # TODO Remove
     cookie = None
     try:
         proto, dummy, host, path = url.split("/", 3)  # Break the url into the protocol, host, and the path
@@ -163,6 +175,12 @@ def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthTo
     ai = ai[0]
 
     s = usocket.socket(ai[0], ai[1], ai[2])  # Set up the socket
+    for index, key in enumerate(params):
+        if index == 0:
+            if "?" not in path:
+            #For the first key, we add ?
+                path+="?"
+         path += key + "=" + params[key] + "&"
     try:
         s.connect(ai[-1])
         if proto == "https:":
@@ -172,8 +190,8 @@ def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthTo
             s.write(b"Host: %s\r\n" % host)
         # Iterate over keys to avoid tuple alloc
         for k in headers:
-            print(k)
-            print(headers[k])
+            print(k)  # TODO Remove
+            print(headers[k])  # TODO Remove
             s.write(k)
             s.write(b": ")
             s.write(headers[k])
@@ -188,7 +206,7 @@ def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthTo
             s.write(b"Content-Length: %d\r\n" % len(data))
         if cookies:
             cookieString = b"Cookie: %s\r\n" % (cookies)
-            print(cookieString)
+            print(cookieString)  # TODO Remove
             s.write(cookieString)
             if OAuthToken:  # Only post the OAuth if we have the cookie, otherwise, it is a bit pointless
                 token = (b"Authorization: Bearer %s\r\n" % (OAuthToken))
@@ -198,7 +216,7 @@ def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthTo
             s.write(data)
 
         l = s.readline()
-        print(l)
+        print(l)  # TODO Remove
         l = l.split(None, 2)
         status = int(l[1])
         reason = ""
@@ -208,12 +226,12 @@ def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthTo
             l = s.readline()
             if not l or l == b"\r\n":
                 break
-            print(l)
+            print(l)  # TODO Remove
             if l.startswith(b'Set-Cookie') and status not in [401, 403]:  # If we get a cookie under "Unauthorised"...Not going to do much good
                 cookieStr = l.decode('utf-8')
                 cookie = cookieStr.split("; expires")[0][12:]
-                print("Cookie\r\n")
-                print(cookie)
+                print("Cookie\r\n")  # TODO Remove
+                print(cookie)  # TODO Remove
             if l.startswith(b"Transfer-Encoding:"):
                 if b"chunked" in l:
                     raise ValueError("Unsupported " + l)
