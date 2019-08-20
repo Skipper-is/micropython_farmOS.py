@@ -3,7 +3,11 @@
 class farmOS:
 
     def __init__(self, hostname, username, password):
-        self.APISession = APISession(hostname, username, password)
+        self.session = APISession(hostname, username, password)
+        self.log = LogAPI(self.session)
+        self.asset = AssetAPI(self.session)
+        self.area = AreaAPI(self.session)
+        self.term = TermAPI(self.session)
 
 
 class APISession:
@@ -58,12 +62,34 @@ class APISession:
         # If this is false, we have not got the correct login. We may need to try again.
         return self.authenticated
 
-    def http_request(self, urlreq, method="GET", options=None, headers={}, json=None, cookies=None):
-        requestedURL = self.hostname + urlreq
-        print(requestedURL)
-        print(cookies)
+    def http_request(self, path, method="GET", options=None, headers={}, json=None, cookies=None):
+        # If you don't add the first / to the request url, like "farm_asset.json?type=animal"
+        # the function will fail, so we just check, and add a / if needed
+        if (path[0] != "/"):
+            path = "/" + path
+        requestedURL = self.hostname + path
+
+        if self.cookie and (cookies is None):  # Check if cookies have been stored yet
+            cookies = self.cookie  # And add them to the request
+        if self.authenticated and self.token:  # And see if we have a token
+            headers["Authorization"] = "Bearer " + self.token  # And add the token to the request as well
         r = request(method, url=requestedURL, data=options, json=json, headers=headers, cookies=cookies)
         return r
+
+
+class BaseAPI():
+
+    def __init(self, session, entity_type=None):
+        self.session = session
+        self.entity_type = entity_type
+        self.filters = {}
+
+
+class LogAPI(BaseAPI):
+
+    def __init__(self, session):
+        self.session = session
+        super().__init(session=session, entity_type="log")
 
 
 class Requests:
@@ -105,31 +131,31 @@ def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthTo
     print(method)
     cookie = None
     try:
-        proto, dummy, host, path = url.split("/", 3)
+        proto, dummy, host, path = url.split("/", 3)  # Break the url into the protocol, host, and the path
     except ValueError:
         proto, dummy, host = url.split("/", 2)
         path = ""
     if proto == "http:":
-        port = 80
+        port = 80  # Standard HTTP, all good in the hood
     elif proto == "https:":
         import ussl
-        port = 443
+        port = 443  # HTTPS, needs a different port, and we need to use ussl to create a secure socket
     else:
-        raise ValueError("Unsupported protocol: " + proto)
+        raise ValueError("Unsupported protocol: " + proto)  # Don't use ftp....
 
-    if ":" in host:
+    if ":" in host:  # For all you crazies who use another port....
         host, port = host.split(":", 1)
         port = int(port)
 
-    ai = usocket.getaddrinfo(host, port, 0, usocket.SOCK_STREAM)
+    ai = usocket.getaddrinfo(host, port, 0, usocket.SOCK_STREAM)  # Get the IP for the host
     ai = ai[0]
 
-    s = usocket.socket(ai[0], ai[1], ai[2])
+    s = usocket.socket(ai[0], ai[1], ai[2])  # Set up the socket
     try:
         s.connect(ai[-1])
         if proto == "https:":
-            s = ussl.wrap_socket(s, server_hostname=host)
-        s.write(b"%s /%s HTTP/1.0\r\n" % (method, path))
+            s = ussl.wrap_socket(s, server_hostname=host)  # If it i https, wrap that socket in an secure socket layer
+        s.write(b"%s /%s HTTP/1.0\r\n" % (method, path))  # Posts something along the lines of: GET /farm_asset.json?type=animal HTTP/1.0
         if "Host" not in headers:
             s.write(b"Host: %s\r\n" % host)
         # Iterate over keys to avoid tuple alloc
@@ -144,15 +170,15 @@ def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthTo
             assert data is None
             import ujson
             data = ujson.dumps(json)
-            s.write(b"Content-Type: application/json\r\n")
+            s.write(b"Content-Type: application/json\r\n")  # If we have JSON, we need to put the content type header to json
         if data:
-            s.write(b"Content-Type: text/plain\r\n")
+
             s.write(b"Content-Length: %d\r\n" % len(data))
         if cookies:
             cookieString = b"Cookie: %s\r\n" % (cookies)
             print(cookieString)
             s.write(cookieString)
-            if OAuthToken:
+            if OAuthToken:  # Only post the OAuth if we have the cookie, otherwise, it is a bit pointless
                 token = (b"Authorization: Bearer %s\r\n" % (OAuthToken))
                 s.write(token)
         s.write(b"\r\n")
@@ -171,7 +197,7 @@ def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthTo
             if not l or l == b"\r\n":
                 break
             print(l)
-            if l.startswith(b'Set-Cookie') and status not in [401, 403]:
+            if l.startswith(b'Set-Cookie') and status not in [401, 403]:  # If we get a cookie under "Unauthorised"...Not going to do much good
                 cookieStr = l.decode('utf-8')
                 cookie = cookieStr.split("; expires")[0][12:]
                 print("Cookie\r\n")
@@ -187,7 +213,6 @@ def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthTo
     resp.status_code = status
     resp.reason = reason
     resp.cookie = cookie
-    print(resp.cookie)
     return resp
 
 
