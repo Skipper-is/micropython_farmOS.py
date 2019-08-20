@@ -51,7 +51,8 @@ class APISession:
 
 
 class Requests:
-
+    # This is a port/rewrite of urequests - from MicroPython-lib
+    # I have added return of cookies to the function
     def __init__(self, f):
         self.raw = f
         self.encoding = "utf-8"
