@@ -5,9 +5,9 @@ class farmOS:
     def __init__(self, hostname, username, password):
         self.session = APISession(hostname, username, password)
         self.log = LogAPI(self.session)
-        self.asset = AssetAPI(self.session)
-        self.area = AreaAPI(self.session)
-        self.term = TermAPI(self.session)
+        #self.asset = AssetAPI(self.session)
+        #self.area = AreaAPI(self.session)
+        #self.term = TermAPI(self.session)
 
 
 class APISession:
@@ -21,6 +21,7 @@ class APISession:
         else:
             self.hostname = hostname
         self.token = None
+        self.cookie = None
         self.authenticated = False
 
     def authenticate(self):
@@ -83,6 +84,17 @@ class BaseAPI():
         self.session = session
         self.entity_type = entity_type
         self.filters = {}
+
+    def getRecordByID(self, id):
+        """ Takes the ID of the record, and returns the data """
+        path = self.entity_type + "/" + str(id) + ".json"
+
+        response = self.session.http_request(path)
+
+        if (response.status_code == 200):  # If we get a success - Return the JSON of the results
+            return response.json()
+
+        return []  # Or return an empty list
 
 
 class LogAPI(BaseAPI):
