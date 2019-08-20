@@ -5,6 +5,8 @@ Currently
 
  - OAuth2 authentication
  - Get single logs by ID
+ - Rewritten urequests
+ - Send custom farmOS requests/posts
  - Yea, not a lot at the moment...
 
 Loads more planned.......
