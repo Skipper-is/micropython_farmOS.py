@@ -149,7 +149,7 @@ class Requests:
         return ujson.loads(self.content)
 
 
-def request(method, url, data=None, json=None, headers={}, cookies=None, OAuthToken=None, stream=None, params={}):
+def request(method="GET", url, data=None, json=None, headers={}, cookies=None, OAuthToken=None, stream=None, params={}):
     import usocket
     print(cookies)  # TODO Remove
     print(method)  # TODO Remove
