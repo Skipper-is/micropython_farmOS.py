@@ -21,25 +21,41 @@ class APISession:
 
     def authenticate(self):
         # Send a request to the server
-        header = {"Content-Type": "application/x-www-form-urlencoded"}
+        # This is using the farmOS user logon form to get a cookie from the server
+        # It will send the username and password to the hostname/user/login you have provided
+        header = {"Content-Type": "application/x-www-form-urlencoded"}  # Set the header to form-urlencoded, so we can send the form login data
 
         logindetails = {"name": self.username,
                     "pass": self.password,
-                    "form_id": "user_login"}
-        options = ""
+                    "form_id": "user_login"}  # The actual login data
+        options = ""  # Placeholder for the actual login options
 
         for k in logindetails:
-            options += k + "=" + logindetails[k] + "&"
+            options += k + "=" + logindetails[k] + "&"  # For each of the pieces of login data, we'll put a = between the form id, and the data
+            # So "name"="Bob"& then we're on to the next one
 
-        self.request = self.http_request("/user/login", method="POST", options=options, headers=header)
-        print(self.request.status_code)
-        if self.request.status_code == 302:
-            print(self.request.cookie)
-            if self.request.cookie:
-                self.cookie = self.request.cookie
+        self.request = self.http_request("/user/login", method="POST", options=options, headers=header)  # Send the actual HTTP request
+        # We're going through the APISession version of request, as it will append the hostname to the request. You could always roll your own by calling
+        # micropython-farmOS.request()
+
+        if self.request.status_code == 302:  # Drupal redirects the user once login is successful, if that is true, we've come to the right place
+
+            if self.request.cookie:  # If we have an actual cookie
+                self.cookie = self.request.cookie  # Let us save that cookie to the APISession instance, so we can use it again
+                # here we are sending the cookie we just got to the restws/session/token API, to get an OAuth2 token.
                 self.request = self.http_request("/restws/session/token", cookies=self.cookie)
-                self.token = self.request.text
-                self.authenticated = True
+
+                if self.request.status_code == 200:  # Success!
+                    self.token = self.request.text  # Now we store the token that was sent back
+
+                    self.authenticated = True  # And store authenticated as true, so we know we've got a token saved
+
+        if self.request.status_code == 200:  # If the login page doesn't send 302, it means you've typed in your username or password wrong
+            print("Error, password or username incorrect")  # So we're going to print a warning for that
+
+        if self.request.status_code == 404:  # If you get a 404, then your hostname is probably incorrect.
+            print("Hostname may be incorrect, login page not found")
+        # If this is false, we have not got the correct login. We may need to try again.
         return self.authenticated
 
     def http_request(self, urlreq, method="GET", options=None, headers={}, json=None, cookies=None):
