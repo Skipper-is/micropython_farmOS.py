@@ -3,7 +3,7 @@ A port/rewrite of [FarmOS.py](https://github.com/farmOS/farmOS.py) for MicroPyth
 ## Features
 Currently
 
- - OAuth2 authentication
+ - Bearer Authenticaton
  - Get single logs by ID
  - Rewritten urequests
  - Send custom farmOS requests/posts
@@ -28,7 +28,7 @@ Initialise the module using:
 
     farm = micropython_farmOS.farmOS(hostname, username, password)
 
-In order to use the module, you will need to get an OAuth2 token and  C🍪okie
+In order to use the module, you will need to get an Bearer token and  C🍪okie
 
     farm.authenticate()  # Returns true if it has been succesful
 
