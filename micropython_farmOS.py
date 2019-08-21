@@ -57,7 +57,7 @@ class APISession:
 
             if self.request.cookie:  # If we have an actual cookie
                 self.cookie = self.request.cookie  # Let us save that cookie to the APISession instance, so we can use it again
-                # here we are sending the cookie we just got to the restws/session/token API, to get an OAuth2 token.
+                # here we are sending the cookie we just got to the restws/session/token API, to get an token.
                 self.request = self.http_request("/restws/session/token", cookies=self.cookie)
 
                 if self.request.status_code == 200:  # Success!
@@ -149,7 +149,7 @@ class Requests:
         return ujson.loads(self.content)
 
 
-def request(method="GET", url, data=None, json=None, headers={}, cookies=None, OAuthToken=None, stream=None, params={}):
+def request(method="GET", url, data=None, json=None, headers={}, cookies=None, token=None, stream=None, params={}):
     import usocket
     print(cookies)  # TODO Remove
     print(method)  # TODO Remove
@@ -208,8 +208,8 @@ def request(method="GET", url, data=None, json=None, headers={}, cookies=None, O
             cookieString = b"Cookie: %s\r\n" % (cookies)
             print(cookieString)  # TODO Remove
             s.write(cookieString)
-            if OAuthToken:  # Only post the OAuth if we have the cookie, otherwise, it is a bit pointless
-                token = (b"Authorization: Bearer %s\r\n" % (OAuthToken))
+            if token:  # Only post the Token if we have the cookie, otherwise, it is a bit pointless
+                token = (b"Authorization: Bearer %s\r\n" % (token))
                 s.write(token)
         s.write(b"\r\n")
         if data:
