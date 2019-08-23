@@ -124,7 +124,7 @@ class BaseAPI():
     def getRecordData(self, filters):
         path = self.entity_type + '.json'
 
-        filters = {**self.filtes, **filters}
+        filters = {**self.filters, **filters}
 
         response = self.session.http_request(path, params=filters)
 
