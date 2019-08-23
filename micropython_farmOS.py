@@ -67,6 +67,7 @@ class APISession:
         self.request = self.http_request('/user/login', method='POST', options=options, headers=header)  # Send the actual HTTP request
         # We're going through the APISession version of request, as it will append the hostname to the request. You could always roll your own by calling
         # micropython-farmOS.request()
+        self.request.close()
         if self.request.status_code == 200:  # If the login page doesn't send 302, it means you've typed in your username or password wrong
             print('Error, password or username incorrect')  # So we're going to print a warning for that
 
@@ -123,9 +124,7 @@ class BaseAPI():
 
     def getRecordData(self, filters):
         path = self.entity_type + '.json'
-
-        filters = {**self.filters, **filters}
-
+        filters.update(self.filters)
         response = self.session.http_request(path, params=filters)
 
         data = {}
@@ -248,7 +247,7 @@ class TermAPI(BaseAPI):
 class AreaAPI(TermAPI):
 
     def __init__(self, session):
-        super().__init__(session=session)
+        super().__init(session=session)
         self.filters['bundle'] = 'farm_areas'
 
     def get(self, filters=None):
@@ -297,13 +296,13 @@ class Requests:
 
 
 def request(method='GET', url=None, data=None, json=None, headers={}, cookies=None, token=None, stream=None, params={}):
-
+    print(url)
     if url is None:  # Check if they've provided a URL!
         print("No URL returned!")
         return None
     import usocket
-    print(cookies)  # TODO Remove
-    print(method)  # TODO Remove
+    # print(cookies)  # TODO Remove
+    # print(method)  # TODO Remove
     cookie = None
     try:
         proto, dummy, host, path = url.split('/', 3)  # Break the url into the protocol, host, and the path
@@ -341,8 +340,8 @@ def request(method='GET', url=None, data=None, json=None, headers={}, cookies=No
             s.write(b'Host: %s\r\n' % host)
         # Iterate over keys to avoid tuple alloc
         for k in headers:
-            print(k)  # TODO Remove
-            print(headers[k])  # TODO Remove
+            # print(k)  # TODO Remove
+            # print(headers[k])  # TODO Remove
             s.write(k)
             s.write(b': ')
             s.write(headers[k])
@@ -357,7 +356,7 @@ def request(method='GET', url=None, data=None, json=None, headers={}, cookies=No
             s.write(b'Content-Length: %d\r\n' % len(data))
         if cookies:
             cookieString = b'Cookie: %s\r\n' % (cookies)
-            print(cookieString)  # TODO Remove
+            # print(cookieString)  # TODO Remove
             s.write(cookieString)
             if token:  # Only post the Token if we have the cookie, otherwise, it is a bit pointless
                 token = (b'Authorization: Bearer %s\r\n' % (token))
@@ -381,8 +380,8 @@ def request(method='GET', url=None, data=None, json=None, headers={}, cookies=No
             if l.startswith(b'Set-Cookie') and status not in [401, 403]:  # If we get a cookie under 'Unauthorised'...Not going to do much good
                 cookieStr = l.decode('utf-8')
                 cookie = cookieStr.split('; expires')[0][12:]
-                print('Cookie\r\n')  # TODO Remove
-                print(cookie)  # TODO Remove
+                # print('Cookie\r\n')  # TODO Remove
+                # print(cookie)  # TODO Remove
             if l.startswith(b'Transfer-Encoding:'):
                 if b'chunked' in l:
                     raise ValueError('Unsupported ' + l)
