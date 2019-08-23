@@ -21,7 +21,7 @@ Import the library:
 
 Set up your variables:
 
-    hostaddress = "http://YourFarmOSInstall.com/"
+    hostname = "http://YourFarmOSInstall.com/"
     username = "YourFarmOSLogin"
     password = "YourFarmOSPassword"
 
