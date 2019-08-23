@@ -5,14 +5,33 @@ class farmOS:
     def __init__(self, hostname, username, password):
         self.session = APISession(hostname, username, password)
         self.log = LogAPI(self.session)
-        #self.asset = AssetAPI(self.session)
-        #self.area = AreaAPI(self.session)
-        #self.term = TermAPI(self.session)
+        self.asset = AssetAPI(self.session)
+        self.area = AreaAPI(self.session)
+        self.term = TermAPI(self.session)
 
     def authenticate(self):
         if (self.session.authenticate()):
             print('Success! Cookie and Authentication Token have been collected!')
         return True
+
+    def info(self):
+        response = self.session.http_request(path='farm.json')
+        if (response.status_code == 200):
+            return response.json()
+        return []
+
+    def vocabulary(self, machine_name=None):
+        path = 'taxonomy_vocabulary.json'
+        params = {}
+        params['machine_name'] = machine_name
+
+        response = self.session.http_request(path=path, params=params)
+
+        if (response.status_code == 200):
+            data = response.json()
+            if 'list' in data:
+                return data['list']
+        return []
 
 
 class APISession:
@@ -175,13 +194,73 @@ class BaseAPI():
         return data
 
     def send(self, payload):
+        options = {}
+        options['json'] = payload
+
+        id = payload.pop['id', None]
+        if id:
+            path = self.entity_type + '/' + str(id)
+            response = self.session.http_request(method="PUT", path=path, options=options)
+        else:
+            path = self.entity_type
+            response = self.session.http_request(method="POST", path=path, options=options)
+        if (response.status_code == 201):
+            return response.json()
+        if (response.status_code == 200):
+            entity_data = {
+                'id': id,
+                'url': path,
+                'resource': self.entity_type,
+                }
+            return entity_data
 
 
 class LogAPI(BaseAPI):
 
     def __init__(self, session):
-        self.session = session
+
         super().__init(session=session, entity_type='log')
+
+
+class AssetAPI(BaseAPI):
+
+    def __init__(self, session):
+
+        super().__init(session=session, entity_type='farm_asset')
+
+
+class TermAPI(BaseAPI):
+
+    def __init(self, session):
+        super().__init(session=session, entity_type='taxonomy_term')
+
+    def get(self, filters=None):
+
+        if isinstance(filters, str):
+            self.filters['bundle'] = filters
+            filters = {}
+
+        data = self.getRecords(filters=filters)
+
+        return data
+
+
+class AreaAPI(TermAPI):
+
+    def __init__(self, session):
+        super().__init__(session=session)
+        self.filters['bundle'] = 'farm_areas'
+
+    def get(self, filters=None):
+        if isinstance(filters, int) or isinstance(filters, str):
+            tid = str(filters)
+            # Add tid to filters object
+            filters = {
+                'tid': tid
+            }
+        data = self.getRecords(filters=filters)
+
+        return data
 
 
 class Requests:
