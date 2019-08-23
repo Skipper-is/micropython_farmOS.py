@@ -1,4 +1,4 @@
-# Micropython_farmOS.py
+# micropython_farmOS.py
 A port/rewrite of [FarmOS.py](https://github.com/farmOS/farmOS.py) for MicroPython.
 CURRENTLY UN-TESTED! Please test!
 ## Features
